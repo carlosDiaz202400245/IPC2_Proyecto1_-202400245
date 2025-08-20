@@ -1,4 +1,5 @@
 from CargarProcesarSalidaDatos import *
+
 def menu():
     while True:
         print("1. Cargar archivo\n2. Procesar archivo\n...")
@@ -7,5 +8,5 @@ def menu():
             ruta = input("Ingrese la ruta del archivo: ")
             campos = cargar_xml(ruta)
         elif opcion == "2":
-            procesarArchivo(campos)
+            # procesarArchivo(campos)
             #y lo demas
