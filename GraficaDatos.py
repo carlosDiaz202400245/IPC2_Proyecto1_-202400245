@@ -23,7 +23,8 @@ class GraficadoraDatos:
                 return False
 
             # Asegurar que la ruta existe
-            os.makedirs(os.path.dirname(nombre_archivo) if os.path.dirname(nombre_archivo) else None, exist_ok=True)
+            if os.path.dirname(nombre_archivo):
+                os.makedirs(os.path.dirname(nombre_archivo), exist_ok=True)
 
             dot.render(nombre_archivo, format='png', cleanup=True)
             print(f"✅ Gráfica {tipo_matriz} generada: {nombre_archivo}.png")
@@ -33,9 +34,41 @@ class GraficadoraDatos:
             print(f"❌ Error al generar gráfica: {e}")
             return False
 
+    def _contar_sensores(self, lista_sensores):
+        """Cuenta la cantidad de sensores en una lista enlazada"""
+        count = 0
+        actual = lista_sensores.cabeza
+        while actual is not None:
+            count += 1
+            actual = actual.siguiente
+        return count
+
+    def _obtener_lista_sensores(self, lista_sensores):
+        """Convierte lista enlazada a lista normal para iteración"""
+        sensores = []
+        actual = lista_sensores.cabeza
+        while actual is not None:
+            sensores.append(actual.dato)
+            actual = actual.siguiente
+        return sensores
+
+    def _obtener_valores_patron(self, patron):
+        """Obtiene los valores de un patrón como lista"""
+        valores = []
+        if patron and hasattr(patron, 'valores'):
+            actual = patron.valores.cabeza
+            while actual is not None:
+                valores.append(actual.dato)
+                actual = actual.siguiente
+        return valores
+
     def _graficar_matriz_frecuencias(self, dot, campo):
         """Genera gráfica de matriz de frecuencias originales"""
         dot.attr(label=f'Matriz de Frecuencias - Campo {campo.nombre}\n\n')
+
+        # Obtener listas de sensores
+        sensores_suelo = self._obtener_lista_sensores(campo.sensores_suelo)
+        sensores_cultivo = self._obtener_lista_sensores(campo.sensores_cultivo)
 
         # Tabla HTML para mejor formato
         tabla_html = '''<
@@ -44,20 +77,12 @@ class GraficadoraDatos:
             <TD BGCOLOR="lightblue"><B>Estación/Sensor</B></TD>'''
 
         # Encabezados de sensores de suelo
-        sensores_suelo = []
-        actual_sensor = campo.sensores_suelo.cabeza
-        while actual_sensor is not None:
-            sensores_suelo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_suelo:
+            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{sensor.id}</B></TD>'
 
         # Encabezados de sensores de cultivo
-        sensores_cultivo = []
-        actual_sensor = campo.sensores_cultivo.cabeza
-        while actual_sensor is not None:
-            sensores_cultivo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_cultivo:
+            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{sensor.id}</B></TD>'
 
         tabla_html += '</TR>'
 
@@ -90,9 +115,21 @@ class GraficadoraDatos:
         """Genera gráfica de matriz de patrones binarios"""
         dot.attr(label=f'Matriz de Patrones - Campo {campo.nombre}\n\n')
 
-        # Primero calcular patrones si no están calculados
-        from CargarProcesarSalidaDatos import calcular_patrones_estaciones
-        calcular_patrones_estaciones(campo)
+        # Calcular patrones si no están calculados
+        if not hasattr(campo.estaciones.cabeza.dato,
+                       'patron_suelo') or campo.estaciones.cabeza.dato.patron_suelo is None:
+            try:
+                from CargarProcesarSalidaDatos import calcular_patrones_estaciones
+                calcular_patrones_estaciones(campo)
+            except ImportError:
+                print("❌ No se pudo importar calcular_patrones_estaciones")
+                return
+
+        # Obtener listas de sensores
+        sensores_suelo = self._obtener_lista_sensores(campo.sensores_suelo)
+        sensores_cultivo = self._obtener_lista_sensores(campo.sensores_cultivo)
+
+        total_sensores = len(sensores_suelo) + len(sensores_cultivo)
 
         tabla_html = '''<
         <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0">
@@ -100,19 +137,11 @@ class GraficadoraDatos:
             <TD BGCOLOR="lightblue"><B>Estación/Sensor</B></TD>'''
 
         # Encabezados de sensores
-        sensores_suelo = []
-        actual_sensor = campo.sensores_suelo.cabeza
-        while actual_sensor is not None:
-            sensores_suelo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_suelo:
+            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{sensor.id}</B></TD>'
 
-        sensores_cultivo = []
-        actual_sensor = campo.sensores_cultivo.cabeza
-        while actual_sensor is not None:
-            sensores_cultivo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_cultivo:
+            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{sensor.id}</B></TD>'
 
         tabla_html += '</TR>'
 
@@ -122,29 +151,23 @@ class GraficadoraDatos:
             estacion = actual_estacion.dato
             tabla_html += f'<TR><TD BGCOLOR="lightblue"><B>{estacion.id}</B></TD>'
 
-            # Valores de patrones de suelo
-            if estacion.patron_suelo:
-                actual_valor = estacion.patron_suelo.valores.cabeza
-                sensor_count = 0
-                while actual_valor is not None and sensor_count < len(sensores_suelo):
-                    valor = actual_valor.dato
-                    color = "red" if valor == 0 else "green"
-                    texto = "0" if valor == 0 else "1"
-                    tabla_html += f'<TD BGCOLOR="{color}"><FONT COLOR="white">{texto}</FONT></TD>'
-                    actual_valor = actual_valor.siguiente
-                    sensor_count += 1
+            # Valores de patrones
+            valores_suelo = self._obtener_valores_patron(estacion.patron_suelo)
+            valores_cultivo = self._obtener_valores_patron(estacion.patron_cultivo)
 
-            # Valores de patrones de cultivo
-            if estacion.patron_cultivo:
-                actual_valor = estacion.patron_cultivo.valores.cabeza
-                sensor_count = 0
-                while actual_valor is not None and sensor_count < len(sensores_cultivo):
-                    valor = actual_valor.dato
-                    color = "red" if valor == 0 else "green"
-                    texto = "0" if valor == 0 else "1"
-                    tabla_html += f'<TD BGCOLOR="{color}"><FONT COLOR="white">{texto}</FONT></TD>'
-                    actual_valor = actual_valor.siguiente
-                    sensor_count += 1
+            # Patrones de suelo
+            for i in range(len(sensores_suelo)):
+                valor = valores_suelo[i] if i < len(valores_suelo) else 0
+                color = "red" if valor == 0 else "green"
+                texto = "0" if valor == 0 else "1"
+                tabla_html += f'<TD BGCOLOR="{color}"><FONT COLOR="white">{texto}</FONT></TD>'
+
+            # Patrones de cultivo
+            for i in range(len(sensores_cultivo)):
+                valor = valores_cultivo[i] if i < len(valores_cultivo) else 0
+                color = "red" if valor == 0 else "green"
+                texto = "0" if valor == 0 else "1"
+                tabla_html += f'<TD BGCOLOR="{color}"><FONT COLOR="white">{texto}</FONT></TD>'
 
             tabla_html += '</TR>'
             actual_estacion = actual_estacion.siguiente
@@ -161,25 +184,21 @@ class GraficadoraDatos:
             dot.node('error', label='No hay grupos reducidos. Ejecute "Procesar archivo" primero.', shape='box')
             return
 
+        # Obtener listas de sensores
+        sensores_suelo = self._obtener_lista_sensores(campo.sensores_suelo)
+        sensores_cultivo = self._obtener_lista_sensores(campo.sensores_cultivo)
+
         tabla_html = '''<
         <TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0">
         <TR>
             <TD BGCOLOR="lightblue"><B>Grupo/Sensor</B></TD>'''
 
         # Encabezados de sensores
-        sensores_suelo = []
-        actual_sensor = campo.sensores_suelo.cabeza
-        while actual_sensor is not None:
-            sensores_suelo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_suelo:
+            tabla_html += f'<TD BGCOLOR="lightgreen"><B>{sensor.id}</B></TD>'
 
-        sensores_cultivo = []
-        actual_sensor = campo.sensores_cultivo.cabeza
-        while actual_sensor is not None:
-            sensores_cultivo.append(actual_sensor.dato)
-            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{actual_sensor.dato.id}</B></TD>'
-            actual_sensor = actual_sensor.siguiente
+        for sensor in sensores_cultivo:
+            tabla_html += f'<TD BGCOLOR="lightyellow"><B>{sensor.id}</B></TD>'
 
         tabla_html += '</TR>'
 

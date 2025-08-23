@@ -3,19 +3,38 @@ from EstructuraBase import ListaEnlazada, Patron
 from ClasesPrincipales import CampoAgricola, Estacion, SensorSuelo, SensorCultivo, GrupoEstaciones
 
 
+def _lista_esta_vacia(lista_enlazada):
+    """Verifica si una lista enlazada está vacía"""
+    return lista_enlazada.cabeza is None
+
+
+def _obtener_elementos_lista(lista_enlazada):
+    """Convierte lista enlazada a lista normal para iteración"""
+    elementos = []
+    actual = lista_enlazada.cabeza
+    while actual is not None:
+        elementos.append(actual.dato)
+        actual = actual.siguiente
+    return elementos
+
+
 def calcular_patrones_estaciones(campo):
     """Calcula los patrones binarios para cada estación usando nuestra clase Patron"""
-    for estacion in campo.estaciones:
+    estaciones = _obtener_elementos_lista(campo.estaciones)
+    sensores_suelo = _obtener_elementos_lista(campo.sensores_suelo)
+    sensores_cultivo = _obtener_elementos_lista(campo.sensores_cultivo)
+
+    for estacion in estaciones:
         # Patrón para sensores de suelo
         patron_suelo = Patron()
-        for sensor in campo.sensores_suelo:
+        for sensor in sensores_suelo:
             frecuencia = sensor.obtener_frecuencia(estacion.id)
             patron_suelo.agregar_valor(1 if frecuencia > 0 else 0)
         estacion.patron_suelo = patron_suelo
 
         # Patrón para sensores de cultivo
         patron_cultivo = Patron()
-        for sensor in campo.sensores_cultivo:
+        for sensor in sensores_cultivo:
             frecuencia = sensor.obtener_frecuencia(estacion.id)
             patron_cultivo.agregar_valor(1 if frecuencia > 0 else 0)
         estacion.patron_cultivo = patron_cultivo
@@ -23,11 +42,14 @@ def calcular_patrones_estaciones(campo):
 
 def patrones_iguales(patron1, patron2):
     """Compara si dos patrones son iguales usando nuestra implementación"""
+    if patron1 is None or patron2 is None:
+        return False
     return patron1.es_igual(patron2)
 
 
 class GrupoPatron:
     """Clase para agrupar estaciones por patrones similares"""
+
     def __init__(self, patron_suelo, patron_cultivo):
         self.patron_suelo = patron_suelo
         self.patron_cultivo = patron_cultivo
@@ -38,85 +60,36 @@ class GrupoPatron:
 
     def tiene_mismos_patrones(self, patron_suelo, patron_cultivo):
         """Verifica si los patrones coinciden"""
-        return (self.patron_suelo.es_igual(patron_suelo) and
-                self.patron_cultivo.es_igual(patron_cultivo))
-
-
-def agrupar_estaciones_sin_estructuras_nativas(campo):
-    """Agrupa estaciones sin usar estructuras nativas de Python"""
-    grupos_patron = ListaEnlazada()
-
-    for estacion in campo.estaciones:
-        encontrado = False
-
-        # Buscar si ya existe un grupo con los mismos patrones
-        actual_grupo = grupos_patron.cabeza
-        while actual_grupo is not None:
-            grupo = actual_grupo.dato
-            if grupo.tiene_mismos_patrones(estacion.patron_suelo, estacion.patron_cultivo):
-                grupo.agregar_estacion(estacion)
-                encontrado = True
-                break
-            actual_grupo = actual_grupo.siguiente
-
-        if not encontrado:
-            # Crear nuevo grupo
-            nuevo_grupo = GrupoPatron(
-                estacion.patron_suelo.clonar(),
-                estacion.patron_cultivo.clonar()
-            )
-            nuevo_grupo.agregar_estacion(estacion)
-            grupos_patron.insertar(nuevo_grupo)
-
-    # Convertir a objetos GrupoEstaciones
-    actual_grupo = grupos_patron.cabeza
-    while actual_grupo is not None:
-        grupo_patron = actual_grupo.dato
-        estaciones_grupo = []
-
-        actual_estacion = grupo_patron.estaciones.cabeza
-        while actual_estacion is not None:
-            estaciones_grupo.append(actual_estacion.dato)
-            actual_estacion = actual_estacion.siguiente
-
-        if estaciones_grupo:
-            grupo_obj = GrupoEstaciones(estaciones_grupo)
-            campo.grupos_estaciones.insertar(grupo_obj)
-
-        actual_grupo = actual_grupo.siguiente
+        return (patrones_iguales(self.patron_suelo, patron_suelo) and
+                patrones_iguales(self.patron_cultivo, patron_cultivo))
 
 
 def agrupar_estaciones_comparacion_directa(campo):
     """
     Algoritmo que compara directamente los patrones de cada estación
-    sin usar estructuras nativas intermedias
+    sin usar estructuras nativas intermedias - VERSIÓN CORREGIDA
     """
-    estaciones_por_agrupar = ListaEnlazada()
-
     # Crear lista de todas las estaciones
-    actual_estacion = campo.estaciones.cabeza
-    while actual_estacion is not None:
-        estaciones_por_agrupar.insertar(actual_estacion.dato)
-        actual_estacion = actual_estacion.siguiente
+    estaciones_lista = _obtener_elementos_lista(campo.estaciones)
+    estaciones_por_agrupar = estaciones_lista.copy()  # Copia para trabajar
 
     grupos_finales = ListaEnlazada()
+    estaciones_procesadas = set()
 
-    while not estaciones_por_agrupar.esta_vacia():
-        # Tomar la primera estación
-        estacion_actual = estaciones_por_agrupar.cabeza.dato
-        estaciones_por_agrupar.cabeza = estaciones_por_agrupar.cabeza.siguiente
-        estaciones_por_agrupar.longitud -= 1
+    for i, estacion_actual in enumerate(estaciones_lista):
+        if estacion_actual.id in estaciones_procesadas:
+            continue
 
         # Crear nuevo grupo con esta estación
-        grupo_actual = ListaEnlazada()
-        grupo_actual.insertar(estacion_actual)
+        estaciones_grupo = [estacion_actual]
+        estaciones_procesadas.add(estacion_actual.id)
 
         # Buscar estaciones con los mismos patrones
-        actual = estaciones_por_agrupar.cabeza
-        previo = None
+        for j in range(i + 1, len(estaciones_lista)):
+            estacion_comparar = estaciones_lista[j]
 
-        while actual is not None:
-            estacion_comparar = actual.dato
+            if estacion_comparar.id in estaciones_procesadas:
+                continue
 
             # Comparar patrones directamente
             patrones_iguales_suelo = patrones_iguales(
@@ -129,29 +102,10 @@ def agrupar_estaciones_comparacion_directa(campo):
             )
 
             if patrones_iguales_suelo and patrones_iguales_cultivo:
-                # Agregar al grupo actual
-                grupo_actual.insertar(estacion_comparar)
+                estaciones_grupo.append(estacion_comparar)
+                estaciones_procesadas.add(estacion_comparar.id)
 
-                # Eliminar de la lista por agrupar
-                if previo is None:
-                    estaciones_por_agrupar.cabeza = actual.siguiente
-                else:
-                    previo.siguiente = actual.siguiente
-                estaciones_por_agrupar.longitud -= 1
-
-                # Continuar con el siguiente
-                actual = actual.siguiente
-            else:
-                previo = actual
-                actual = actual.siguiente
-
-        # Convertir el grupo a objeto GrupoEstaciones
-        estaciones_grupo = []
-        actual_grupo = grupo_actual.cabeza
-        while actual_grupo is not None:
-            estaciones_grupo.append(actual_grupo.dato)
-            actual_grupo = actual_grupo.siguiente
-
+        # Crear objeto GrupoEstaciones
         if estaciones_grupo:
             grupo_obj = GrupoEstaciones(estaciones_grupo)
             grupos_finales.insertar(grupo_obj)
@@ -169,9 +123,22 @@ def procesar_campo(campo):
     # Agrupar estaciones por patrones similares
     agrupar_estaciones_comparacion_directa(campo)
 
+    # Contar estaciones y grupos
+    num_estaciones = 0
+    actual = campo.estaciones.cabeza
+    while actual is not None:
+        num_estaciones += 1
+        actual = actual.siguiente
+
+    num_grupos = 0
+    actual = campo.grupos_estaciones.cabeza
+    while actual is not None:
+        num_grupos += 1
+        actual = actual.siguiente
+
     print(f"➢ Campo {campo.id} procesado exitosamente")
-    print(f"➢ Estaciones originales: {campo.estaciones.longitud}")
-    print(f"➢ Grupos reducidos: {campo.grupos_estaciones.longitud}")
+    print(f"➢ Estaciones originales: {num_estaciones}")
+    print(f"➢ Grupos reducidos: {num_grupos}")
 
 
 def generar_xml_salida(campos, ruta_salida):
@@ -190,8 +157,8 @@ def generar_xml_salida(campos, ruta_salida):
             while actual_grupo is not None:
                 grupo = actual_grupo.dato
                 ET.SubElement(estaciones_reducidas_xml, 'estacion',
-                             id=grupo.id_representante,
-                             nombre=grupo.nombre_representante)
+                              id=grupo.id_representante,
+                              nombre=grupo.nombre_representante)
                 actual_grupo = actual_grupo.siguiente
 
             # Sensores de suelo con frecuencias reducidas
@@ -201,7 +168,7 @@ def generar_xml_salida(campos, ruta_salida):
             while actual_sensor is not None:
                 sensor = actual_sensor.dato
                 sensor_xml = ET.SubElement(sensores_suelo_xml, 'sensor',
-                                         id=sensor.id, nombre=sensor.nombre)
+                                           id=sensor.id, nombre=sensor.nombre)
 
                 actual_grupo = campo.grupos_estaciones.cabeza
                 while actual_grupo is not None:
@@ -215,8 +182,9 @@ def generar_xml_salida(campos, ruta_salida):
                         actual_estacion = actual_estacion.siguiente
 
                     if frecuencia_total > 0:
-                        ET.SubElement(sensor_xml, 'frecuencia',
-                                    idEstacion=grupo.id_representante).text = str(frecuencia_total)
+                        frecuencia_elem = ET.SubElement(sensor_xml, 'frecuencia')
+                        frecuencia_elem.set('idEstacion', grupo.id_representante)
+                        frecuencia_elem.text = str(frecuencia_total)
 
                     actual_grupo = actual_grupo.siguiente
 
@@ -229,7 +197,7 @@ def generar_xml_salida(campos, ruta_salida):
             while actual_sensor is not None:
                 sensor = actual_sensor.dato
                 sensor_xml = ET.SubElement(sensores_cultivo_xml, 'sensorT',
-                                         id=sensor.id, nombre=sensor.nombre)
+                                           id=sensor.id, nombre=sensor.nombre)
 
                 actual_grupo = campo.grupos_estaciones.cabeza
                 while actual_grupo is not None:
@@ -243,8 +211,9 @@ def generar_xml_salida(campos, ruta_salida):
                         actual_estacion = actual_estacion.siguiente
 
                     if frecuencia_total > 0:
-                        ET.SubElement(sensor_xml, 'frecuencia',
-                                    idEstacion=grupo.id_representante).text = str(frecuencia_total)
+                        frecuencia_elem = ET.SubElement(sensor_xml, 'frecuencia')
+                        frecuencia_elem.set('idEstacion', grupo.id_representante)
+                        frecuencia_elem.text = str(frecuencia_total)
 
                     actual_grupo = actual_grupo.siguiente
 
@@ -261,5 +230,5 @@ def generar_xml_salida(campos, ruta_salida):
         return True
 
     except Exception as e:
-        print(f"Error al generar archivo de salida: {e}")
+        print(f"❌ Error al generar archivo de salida: {e}")
         return False
