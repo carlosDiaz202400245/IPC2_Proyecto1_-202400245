@@ -1,7 +1,6 @@
 from graphviz import Digraph
 import os
 
-
 class GraficadoraDatos:
     def __init__(self):
         pass

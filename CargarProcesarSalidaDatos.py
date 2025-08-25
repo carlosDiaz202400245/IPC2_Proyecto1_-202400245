@@ -1,7 +1,6 @@
 import xml.etree.ElementTree as ET
 from EstructuraBase import ListaEnlazada, Patron
-from ClasesPrincipales import CampoAgricola, Estacion, SensorSuelo, SensorCultivo, GrupoEstaciones
-
+from Entidades import CampoAgricola, Estacion, SensorSuelo, SensorCultivo, GrupoEstaciones
 
 def _lista_esta_vacia(lista_enlazada):
     """Verifica si una lista enlazada está vacía"""
@@ -66,17 +65,20 @@ class GrupoPatron:
 
 def agrupar_estaciones_comparacion_directa(campo):
     """
-    Algoritmo que compara directamente los patrones de cada estación
-    sin usar estructuras nativas intermedias - VERSIÓN CORREGIDA
+    Algoritmo corregido para agrupar estaciones por patrones similares
     """
-    # Crear lista de todas las estaciones
-    estaciones_lista = _obtener_elementos_lista(campo.estaciones)
-    estaciones_por_agrupar = estaciones_lista.copy()  # Copia para trabajar
+    # Obtener todas las estaciones
+    todas_estaciones = []
+    actual = campo.estaciones.cabeza
+    while actual is not None:
+        todas_estaciones.append(actual.dato)
+        actual = actual.siguiente
 
+    # Lista para grupos finales
     grupos_finales = ListaEnlazada()
     estaciones_procesadas = set()
 
-    for i, estacion_actual in enumerate(estaciones_lista):
+    for i, estacion_actual in enumerate(todas_estaciones):
         if estacion_actual.id in estaciones_procesadas:
             continue
 
@@ -85,13 +87,13 @@ def agrupar_estaciones_comparacion_directa(campo):
         estaciones_procesadas.add(estacion_actual.id)
 
         # Buscar estaciones con los mismos patrones
-        for j in range(i + 1, len(estaciones_lista)):
-            estacion_comparar = estaciones_lista[j]
+        for j in range(i + 1, len(todas_estaciones)):
+            estacion_comparar = todas_estaciones[j]
 
             if estacion_comparar.id in estaciones_procesadas:
                 continue
 
-            # Comparar patrones directamente
+            # Comparar patrones
             patrones_iguales_suelo = patrones_iguales(
                 estacion_actual.patron_suelo,
                 estacion_comparar.patron_suelo
@@ -110,8 +112,7 @@ def agrupar_estaciones_comparacion_directa(campo):
             grupo_obj = GrupoEstaciones(estaciones_grupo)
             grupos_finales.insertar(grupo_obj)
 
-    # Asignar los grupos finales al campo
-    campo.grupos_estaciones = grupos_finales
+    return grupos_finales
 
 
 def procesar_campo(campo):

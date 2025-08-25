@@ -1,8 +1,9 @@
 from CargarProcesarSalidaDatos import procesar_campo, generar_xml_salida
 from GraficaDatos import GraficadoraDatos
-from ClasesPrincipales import CampoAgricola, Estacion, SensorSuelo, SensorCultivo, Frecuencia
-from EstructuraBase import ListaEnlazada
+
 import xml.etree.ElementTree as ET
+from EstructuraBase import ListaEnlazada
+from Entidades import CampoAgricola, Estacion, SensorSuelo, SensorCultivo
 
 # Variables globales
 campos_cargados = ListaEnlazada()
