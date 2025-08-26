@@ -168,7 +168,7 @@ def generar_xml_salida(campos, ruta_salida):
             actual_sensor = campo.sensores_suelo.cabeza
             while actual_sensor is not None:
                 sensor = actual_sensor.dato
-                sensor_xml = ET.SubElement(sensores_suelo_xml, 'sensor',
+                sensor_xml = ET.SubElement(sensores_suelo_xml, 'sensorS',
                                            id=sensor.id, nombre=sensor.nombre)
 
                 actual_grupo = campo.grupos_estaciones.cabeza

@@ -44,7 +44,7 @@ def cargar_xml(ruta_archivo):
             # Procesar sensores de suelo
             sensores_suelo = campo_elem.find('sensoresSuelo')
             if sensores_suelo is not None:
-                for sensor_elem in sensores_suelo.findall('sensor'):
+                for sensor_elem in sensores_suelo.findall('sensorS'):
                     sensor_id = sensor_elem.get('id')
                     sensor_nombre = sensor_elem.get('nombre')
                     sensor = SensorSuelo(sensor_id, sensor_nombre)
@@ -142,13 +142,13 @@ def mostrar_datos_estudiante():
     print("\n" + "=" * 50)
     print("DATOS DEL ESTUDIANTE")
     print("=" * 50)
-    print("➢ Nombre del estudiante: [Tu Nombre Completo]")
-    print("➢ Carnet del estudiante: [Tu Carnet]")
+    print("➢ Nombre del estudiante: Carlos Eduardo Díaz")
+    print("➢ Carnet del estudiante: 2018312")
     print("➢ Curso: Introducción a la Programación y Computación 2")
-    print("➢ Sección: [Tu Sección]")
+    print("➢ Sección: B")
     print("➢ Carrera: Ingeniería en Ciencias y Sistemas")
     print("➢ Semestre: 4to Semestre")
-    print("➢ Enlace a documentación: [Tu URL de GitHub]")
+    print("➢ Enlace a documentación: https://github.com/carlosDiaz202400245/IPC2_Proyecto1_-202400245/tree/v2.0")
     print("=" * 50)
 
 
@@ -177,7 +177,7 @@ def generar_grafica():
     try:
         seleccion = int(input("Seleccione el número del campo: ")) - 1
         if seleccion < 0 or seleccion >= len(campos_lista):
-            print("❌ Selección inválida")
+            print("Selección inválida")
             return
 
         campo_seleccionado = campos_lista[seleccion]
@@ -196,7 +196,7 @@ def generar_grafica():
         elif tipo_opcion == "3":
             tipo_grafica = "reducida"
         else:
-            print("❌ Opción inválida")
+            print(" Opción inválida")
             return
 
         nombre_archivo = input("Ingrese el nombre para el archivo de la gráfica: ").strip()
@@ -206,13 +206,13 @@ def generar_grafica():
         # Generar la gráfica
         success = graficadora.generar_grafica(campo_seleccionado, tipo_grafica, nombre_archivo)
         if success:
-            print("✅ Gráfica generada exitosamente")
+            print("Gráfica generada exitosamente")
             print(f"➢ La gráfica se ha guardado como: {nombre_archivo}.png")
 
     except ValueError:
-        print("❌ Entrada inválida. Debe ingresar un número.")
+        print(" Entrada inválida. Debe ingresar un número.")
     except Exception as e:
-        print(f"❌ Error al generar gráfica: {e}")
+        print(f" Error al generar gráfica: {e}")
 
 
 def menu():
@@ -253,11 +253,11 @@ def menu():
             generar_grafica()
 
         elif opcion == "6":
-            print("👋 ¡Hasta luego!")
+            print("¡Hasta luego!")
             break
 
         else:
-            print("❌ Opción no válida. Intente nuevamente.")
+            print(" Opción no válida. Intente nuevamente.")
 
 
 if __name__ == "__main__":
